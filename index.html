@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>RTD Showcase</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+    <div id="candidates-modal" class="modal fade" role="dialog">
+        <div class="modal-dialog">
+            <!-- Modal content-->
+            <div class="modal-content">
+              <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Candidates</h4>
+              </div>
+              <div class="modal-body">
+                <ul id="candidate-sensors"class="nav nav-pills nav-stacked"></ul>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+              </div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="navbar navbar-default">
+        <div class="container">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="index.html">
+                    <img alt="Brand" src="images/rtdlogo.svg" width="20" height="20">
+                </a>
+            </div>
+            <a href="https://github.com/you"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/38ef81f8aca64bb9a64448d0d70f1308ef5341ab/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f6461726b626c75655f3132313632312e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png"></a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card card-white">
+            
+            <div class="card-block clearfix">
+                <div class="col-sm-4">
+                    <div class="form-group">
+                        <label for="sensors">Sensor</label>
+                        <select id="sensors" class="form-control">
+                            <option value="">*** Resolve RTD ***</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="form-group">
+                        <label for="resistance-input">Resistance (Ohm)</label>
+                        <input id="resistance-input" class="form-control" type="number">
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="form-group">
+                        <label for="temperature-input">Temperature (&deg;C)</label>
+                        <input id="temperature-input" class="form-control" type="number">
+                    </div>
+                </div>
+
+                <div class="col-sm-12">
+                    <button id="plot-all" class="btn btn-primary">Plot all sensors</button>
+                </div>
+
+                <div class="col-sm-12" style="margin-top: 2em;">
+                    <div id="flotchart" style="height: 400px;"></div>
+                </div>
+            </div>
+            <div class="card-footer text-muted">
+                Created by <a href="mailto:mikael.brorsson@gmail.com">Mikael Ganehag Brorsson</a>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="js/underscore-min.js"></script>
+    <script src="js/jquery.min.js"></script>
+    <script src="js/jquery.flot.min.js"></script>
+    <script src="js/jquery.flot.canvas.min.js"></script>
+    <script src="js/jquery.flot.resize.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/naturalSort.js"></script>
+    <script src="js/application.js"></script>
+    <script>
+        $(document).ready(function() {
+            var app = new Application();
+
+            _.each(app.sensors().sort(naturalSort), function(item) {
+                var o = $('<option></option');
+                o.attr('value', item).text(item.toUpperCase().replace(/_/, ' '));
+                $('#sensors').append(o);
+            });
+
+            $.plot($('#flotchart'), []);
+
+            function formatSizeUnits(bytes){
+                    if      (bytes>=1000000000) {bytes=(bytes/1000000000).toFixed(2)+' GOhm';}
+                    else if (bytes>=1000000)    {bytes=(bytes/1000000).toFixed(2)+' MOhm';}
+                    else if (bytes>=1000)       {bytes=(bytes/1000).toFixed(2)+' kOhm';}
+                    else if (bytes>1)           {bytes=bytes+' Ohm';}
+                    else if (bytes==1)          {bytes=bytes+' Ohm';}
+                    else                        {bytes='0 Ohm';}
+                    return bytes;
+            }
+
+
+            function plotAllSensors(app) {
+                var series = _.map(app.SENSOR_LIST.input, function(sensor) {
+                    var data = _.map(_.range(-50, 50), function(item) {
+                        return [item, app.t2r(sensor[1], item)];
+                    });
+
+                    var max = _.max(data, function(item) {
+                        return item[1];
+                    })[1];
+                    var t = {
+                        data: data,
+                        label: sensor[0],
+                        yaxis: max < 300 ? 1 : max < 2000 ? 2 : max < 20e4 ? 3 : max < 5e6 ? 4 : 5
+                    };
+                    return t;
+                });
+
+                $.plot($('#flotchart'), series, {
+                    yaxes: [
+                        { min: 0 },
+                        { position: "right", min: 0 },
+                        { min: 0 },
+                        { position: "right", min: 0 },
+                        { min: 0 },
+                    ],
+                    legend: {
+                        show: false
+                    },
+                    shadowSize: 0,
+                    yaxis: {
+                        tickFormatter: function(item) {
+                            console.log(item);
+                            return formatSizeUnits(item)
+                        }
+                    }
+                });             
+            }
+
+            function findCandidateSensors(app) {
+                var inp_r = parseFloat($('#resistance-input').val()),
+                    inp_t = parseFloat($('#temperature-input').val());
+
+                var candidates = _.sortBy(_.map(app.SENSOR_LIST.input, function(item) {
+                    var t = app.r2t(item[1], inp_r);
+                    return {
+                        title: item[0],
+                        delta: Math.abs(t - inp_t)
+                    };
+                }), function(item) {
+                    return item.delta;
+                });
+
+                if(candidates.length) {
+                    var rangeVal = candidates[0].delta * 2 + 0.1;
+                    candidates = _.filter(candidates, function(item) {
+                        return item.delta <= rangeVal;
+                    });
+                }
+
+                return candidates;
+            }
+
+            function getSelectedSensor(input) {
+                var slist = input === true ? app.SENSOR_LIST.input : app.SENSOR_LIST.output,
+                    selected_sensor = $('#sensors').val()
+
+                return _.last(_.first(_.filter(slist, function(item) {
+                    return item[0] == selected_sensor;
+                })));
+            }
+
+            function recomputeEverything(app, target) {
+                var resistance = parseFloat($('#resistance-input').val()),
+                    temperature = parseFloat($('#temperature-input').val()),
+                    selected_sensor = $('#sensors').val(),
+                    out_resistance = -Infinity,
+                    out_temperature = -Infinity;
+
+                var job = getSelectedSensor((target == 'resistance' ? false : true));
+
+                if(job) {
+                    out_resistance = app.t2r(job, temperature);
+                    out_temperature = app.r2t(job, resistance);
+
+                    var series = [{
+                        data: _.map(_.range(-50, 50), function(item) {
+                            return [item, app.t2r(job, item)];
+                        }),
+                        label: ''
+                    }, {
+                        data: [[temperature, out_resistance]],
+                        label: '',
+                        points: {
+                            show: true,
+                            radius: 5
+                        },
+                        color: 'red'
+                    }];
+                    $.plot($('#flotchart'), series, {
+                        yaxis: {
+                            tickFormatter: function(item) {
+                                return formatSizeUnits(item)
+                            }
+                        },
+                        shadowSize: 0
+                    });
+
+                    switch (target) {
+                        case 'resistance': // Calculate Resistance
+                        if(resistance !== NaN) {
+                          $('#resistance-input').val(out_resistance);
+                        }
+
+                        break;
+
+                      case 'temperature': // Calculate Temperature
+                        if(temperature !== NaN) {
+                          $('#temperature-input').val(out_temperature);
+                        }
+                        break;
+                    }
+                } else {
+                    var cand = findCandidateSensors(app);
+
+                    if(cand && cand.length) {
+                        $('#candidate-sensors').children().remove();
+                        _.each(cand, function(item) {
+                            $('#candidate-sensors').append($('<li><a data-sensor="' + item.title + '" href="# style="margin-right: .5em;"><span>' + item.title.toUpperCase().replace(/_/, ' ') + '</span><span class="pull-right">(&Delta; ' + item.delta.toFixed(4) + ')</span>' + '</a></li>'));
+                        });
+                        $('#candidate-sensors a').click(function(e) {
+                            e.preventDefault();
+                            $('#sensors').val($(this).data('sensor'));
+                            $('#candidates-modal').modal('hide');
+
+                            recomputeEverything(app, 'temperature');
+                        });
+                        $('#candidates-modal').modal('show');
+                    }
+                }
+            }
+
+            $('#resistance-input').change(function() {
+                recomputeEverything(app, 'temperature');
+            });
+
+            $('#temperature-input').change(function() {
+                recomputeEverything(app, 'resistance');
+            });
+
+            $('#sensors').change(function() {
+                recomputeEverything(app, 'temperature');
+            });
+
+            $('#plot-all').click(function(e) {
+                e.preventDefault();
+                plotAllSensors(app);
+            });
+        });
+    </script>
+</body>
+</html>
