@@ -85,10 +85,10 @@
     <script src="js/jquery.flot.resize.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="js/naturalSort.js"></script>
-    <script src="js/application.js"></script>
+    <script src="js/rtd.js"></script>
     <script>
         $(document).ready(function() {
-            var app = new Application();
+            var app = new RTD();
 
             _.each(app.sensors().sort(naturalSort), function(item) {
                 var o = $('<option></option');
@@ -140,7 +140,6 @@
                     shadowSize: 0,
                     yaxis: {
                         tickFormatter: function(item) {
-                            console.log(item);
                             return formatSizeUnits(item)
                         }
                     }
@@ -151,10 +150,10 @@
                 var inp_r = parseFloat($('#resistance-input').val()),
                     inp_t = parseFloat($('#temperature-input').val());
 
-                var candidates = _.sortBy(_.map(app.SENSOR_LIST.input, function(item) {
-                    var t = app.r2t(item[1], inp_r);
+                var candidates = _.sortBy(_.map(app.SENSOR_LIST, function(item, key) {
+                    var t = app.r2t(key, inp_r);
                     return {
-                        title: item[0],
+                        title: key,
                         delta: Math.abs(t - inp_t)
                     };
                 }), function(item) {
@@ -171,13 +170,11 @@
                 return candidates;
             }
 
-            function getSelectedSensor(input) {
-                var slist = input === true ? app.SENSOR_LIST.input : app.SENSOR_LIST.output,
-                    selected_sensor = $('#sensors').val()
-
-                return _.last(_.first(_.filter(slist, function(item) {
-                    return item[0] == selected_sensor;
-                })));
+            function getSelectedSensor() {
+                var selected_sensor = $('#sensors').val();
+                return _.first(_.filter(app.SENSOR_LIST, function(item, index) {
+                    return index == selected_sensor;
+                }));
             }
 
             function recomputeEverything(app, target) {
@@ -187,14 +184,18 @@
                     out_resistance = -Infinity,
                     out_temperature = -Infinity;
 
-                var job = getSelectedSensor((target == 'resistance' ? false : true));
+				var job = $('#sensors').val();
 
-                if(job) {
-                    out_resistance = app.t2r(job, temperature);
-                    out_temperature = app.r2t(job, resistance);
+                if($('#sensors').val() != "") {
+					if(!isNaN(resistance)) {
+						out_temperature = app.r2t(job, resistance);
+					}
+                    if(!isNaN(temperature)) {
+	                    out_resistance = app.t2r(job, temperature);
+					}
 
                     var series = [{
-                        data: _.map(_.range(-50, 50), function(item) {
+                        data: _.map(_.range(Math.min(-50, temperature), Math.max(50, temperature)), function(item) {
                             return [item, app.t2r(job, item)];
                         }),
                         label: ''
@@ -238,6 +239,7 @@
                         _.each(cand, function(item) {
                             $('#candidate-sensors').append($('<li><a data-sensor="' + item.title + '" href="# style="margin-right: .5em;"><span>' + item.title.toUpperCase().replace(/_/, ' ') + '</span><span class="pull-right">(&Delta; ' + item.delta.toFixed(4) + ')</span>' + '</a></li>'));
                         });
+
                         $('#candidate-sensors a').click(function(e) {
                             e.preventDefault();
                             $('#sensors').val($(this).data('sensor'));
