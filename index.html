@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,16 +14,16 @@
         <div class="modal-dialog">
             <!-- Modal content-->
             <div class="modal-content">
-              <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-                <h4 class="modal-title">Candidates</h4>
-              </div>
-              <div class="modal-body">
-                <ul id="candidate-sensors"class="nav nav-pills nav-stacked"></ul>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-              </div>
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Candidates</h4>
+                </div>
+                <div class="modal-body">
+                    <ul id="candidate-sensors" class="nav nav-pills nav-stacked"></ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                </div>
             </div>
         </div>
     </div>
@@ -40,7 +41,7 @@
 
     <div class="container">
         <div class="card card-white">
-            
+
             <div class="card-block clearfix">
                 <div class="col-sm-4">
                     <div class="form-group">
@@ -98,14 +99,21 @@
 
             $.plot($('#flotchart'), []);
 
-            function formatSizeUnits(bytes){
-                    if      (bytes>=1000000000) {bytes=(bytes/1000000000).toFixed(2)+' GOhm';}
-                    else if (bytes>=1000000)    {bytes=(bytes/1000000).toFixed(2)+' MOhm';}
-                    else if (bytes>=1000)       {bytes=(bytes/1000).toFixed(2)+' kOhm';}
-                    else if (bytes>1)           {bytes=bytes+' Ohm';}
-                    else if (bytes==1)          {bytes=bytes+' Ohm';}
-                    else                        {bytes='0 Ohm';}
-                    return bytes;
+            function formatSizeUnits(bytes) {
+                if (bytes >= 1000000000) {
+                    bytes = (bytes / 1000000000).toFixed(2) + ' GOhm';
+                } else if (bytes >= 1000000) {
+                    bytes = (bytes / 1000000).toFixed(2) + ' MOhm';
+                } else if (bytes >= 1000) {
+                    bytes = (bytes / 1000).toFixed(2) + ' kOhm';
+                } else if (bytes > 1) {
+                    bytes = bytes + ' Ohm';
+                } else if (bytes == 1) {
+                    bytes = bytes + ' Ohm';
+                } else {
+                    bytes = '0 Ohm';
+                }
+                return bytes;
             }
 
 
@@ -127,12 +135,23 @@
                 });
 
                 $.plot($('#flotchart'), series, {
-                    yaxes: [
-                        { min: 0 },
-                        { position: "right", min: 0 },
-                        { min: 0 },
-                        { position: "right", min: 0 },
-                        { min: 0 },
+                    yaxes: [{
+                            min: 0
+                        },
+                        {
+                            position: "right",
+                            min: 0
+                        },
+                        {
+                            min: 0
+                        },
+                        {
+                            position: "right",
+                            min: 0
+                        },
+                        {
+                            min: 0
+                        },
                     ],
                     legend: {
                         show: false
@@ -143,7 +162,7 @@
                             return formatSizeUnits(item)
                         }
                     }
-                });             
+                });
             }
 
             function findCandidateSensors(app) {
@@ -160,7 +179,7 @@
                     return item.delta;
                 });
 
-                if(candidates.length) {
+                if (candidates.length) {
                     var rangeVal = candidates[0].delta * 2 + 0.1;
                     candidates = _.filter(candidates, function(item) {
                         return item.delta <= rangeVal;
@@ -184,23 +203,30 @@
                     out_resistance = -Infinity,
                     out_temperature = -Infinity;
 
-				var job = $('#sensors').val();
+                var job = $('#sensors').val();
+                if (isNaN(resistance) && isNaN(temperature)) {
+                    return;
+                }
 
-                if($('#sensors').val() != "") {
-					if(!isNaN(resistance)) {
-						out_temperature = app.r2t(job, resistance);
-					}
-                    if(!isNaN(temperature)) {
-	                    out_resistance = app.t2r(job, temperature);
-					}
+                if ($('#sensors').val() != "") {
+                    if (!isNaN(resistance)) {
+                        out_temperature = app.r2t(job, resistance);
+                        out_resistance = resistance;
+                    }
+                    if (!isNaN(temperature)) {
+                        out_resistance = app.t2r(job, temperature);
+                        out_temperature = temperature;
+                    }
 
                     var series = [{
-                        data: _.map(_.range(Math.min(-50, temperature), Math.max(50, temperature)), function(item) {
+                        data: _.map(_.range(Math.min(-50, isNaN(temperature) ? 0 : temperature), Math.max(50, isNaN(temperature) ? 0 : temperature)), function(item) {
                             return [item, app.t2r(job, item)];
                         }),
                         label: ''
                     }, {
-                        data: [[temperature, out_resistance]],
+                        data: [
+                            [out_temperature, out_resistance]
+                        ],
                         label: '',
                         points: {
                             show: true,
@@ -219,22 +245,22 @@
 
                     switch (target) {
                         case 'resistance': // Calculate Resistance
-                        if(resistance !== NaN) {
-                          $('#resistance-input').val(out_resistance);
-                        }
+                            if (resistance !== NaN) {
+                                $('#resistance-input').val(out_resistance);
+                            }
 
-                        break;
+                            break;
 
-                      case 'temperature': // Calculate Temperature
-                        if(temperature !== NaN) {
-                          $('#temperature-input').val(out_temperature);
-                        }
-                        break;
+                        case 'temperature': // Calculate Temperature
+                            if (temperature !== NaN) {
+                                $('#temperature-input').val(out_temperature);
+                            }
+                            break;
                     }
                 } else {
                     var cand = findCandidateSensors(app);
 
-                    if(cand && cand.length) {
+                    if (cand && cand.length) {
                         $('#candidate-sensors').children().remove();
                         _.each(cand, function(item) {
                             $('#candidate-sensors').append($('<li><a data-sensor="' + item.title + '" href="# style="margin-right: .5em;"><span>' + item.title.toUpperCase().replace(/_/, ' ') + '</span><span class="pull-right">(&Delta; ' + item.delta.toFixed(4) + ')</span>' + '</a></li>'));
@@ -253,10 +279,12 @@
             }
 
             $('#resistance-input').change(function() {
+                $('#temperature-input').val('');
                 recomputeEverything(app, 'temperature');
             });
 
             $('#temperature-input').change(function() {
+                $('#resistance-input').val('');
                 recomputeEverything(app, 'resistance');
             });
 
@@ -271,4 +299,5 @@
         });
     </script>
 </body>
+
 </html>
