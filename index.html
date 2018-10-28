@@ -19,7 +19,7 @@
                     <h4 class="modal-title">Candidates</h4>
                 </div>
                 <div class="modal-body">
-                    <ul id="candidate-sensors" class="nav nav-pills nav-stacked"></ul>
+                    <ul id="candidate-sensors" class="nav flex-column"></ul>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -43,33 +43,50 @@
         <div class="card card-white">
 
             <div class="card-block clearfix">
-                <div class="col-sm-4">
-                    <div class="form-group">
-                        <label for="sensors">Sensor</label>
-                        <select id="sensors" class="form-control">
-                            <option value="">*** Resolve RTD ***</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="col-sm-4">
-                    <div class="form-group">
-                        <label for="resistance-input">Resistance (Ohm)</label>
-                        <input id="resistance-input" class="form-control" type="number">
-                    </div>
-                </div>
-                <div class="col-sm-4">
-                    <div class="form-group">
-                        <label for="temperature-input">Temperature (&deg;C)</label>
-                        <input id="temperature-input" class="form-control" type="number">
-                    </div>
-                </div>
+                <div class="row">
+                    <div class="col-sm-4">
+                        <div class="form-group">
+                            <label for="sensors">Sensor</label>
 
-                <div class="col-sm-12">
-                    <button id="plot-all" class="btn btn-primary">Plot all sensors</button>
+                            <select id="sensors" class="form-control">
+                                <option value="">*** Resolve RTD ***</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="form-group">
+                            <label for="resistance-input">Resistance (Ohm)</label>
+                            <div class="input-group mb-3">
+                              <input id="resistance-input" class="form-control" type="number" placeholder="Ω">
+                              <div class="input-group-append">
+                                <button class="btn btn-outline-secondary" type="button" id="button-set-resistance">Set</button>
+                              </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="form-group">
+                            <label for="temperature-input">Temperature (&deg;C)</label>
+                            
+                            <div class="input-group mb-3">
+                              <input id="temperature-input" class="form-control" type="number" placeholder="&deg;C">
+                              <div class="input-group-append">
+                                <button class="btn btn-outline-secondary" type="button" id="button-set-temperature">Set</button>
+                              </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                <!--
+                <div class="row">
+                    <div class="col-sm-12">
+                        <button id="plot-all" class="btn btn-primary">Plot all sensors</button>
+                    </div>
+                </div>
+                -->
 
                 <div class="col-sm-12" style="margin-top: 2em;">
-                    <div id="flotchart" style="height: 400px;"></div>
+                    <div id="flotchart" style="height: 500px;"></div>
                 </div>
             </div>
             <div class="card-footer text-muted">
@@ -85,8 +102,10 @@
     <script src="js/jquery.flot.canvas.min.js"></script>
     <script src="js/jquery.flot.resize.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
+    
     <script src="js/naturalSort.js"></script>
     <script src="js/rtd.js"></script>
+
     <script>
         $(document).ready(function() {
             var app = new RTD();
@@ -244,16 +263,15 @@
                     });
 
                     switch (target) {
-                        case 'resistance': // Calculate Resistance
+                        case 'temperature': // Calculate Temperature
                             if (resistance !== NaN) {
-                                $('#resistance-input').val(out_resistance);
+                                $('#temperature-input').val(out_temperature);
                             }
-
                             break;
 
-                        case 'temperature': // Calculate Temperature
+                        case 'resistance': // Calculate Resistance
                             if (temperature !== NaN) {
-                                $('#temperature-input').val(out_temperature);
+                                $('#resistance-input').val(out_resistance);
                             }
                             break;
                     }
@@ -263,7 +281,7 @@
                     if (cand && cand.length) {
                         $('#candidate-sensors').children().remove();
                         _.each(cand, function(item) {
-                            $('#candidate-sensors').append($('<li><a data-sensor="' + item.title + '" href="# style="margin-right: .5em;"><span>' + item.title.toUpperCase().replace(/_/, ' ') + '</span><span class="pull-right">(&Delta; ' + item.delta.toFixed(4) + ')</span>' + '</a></li>'));
+                            $('#candidate-sensors').append($('<li class="nav-item"><a data-sensor="' + item.title + '" href="# style="margin-right: .5em;"><span>' + item.title.toUpperCase().replace(/_/, ' ') + '</span><span class="float-right">(&Delta; ' + item.delta.toFixed(4) + ')</span>' + '</a></li>'));
                         });
 
                         $('#candidate-sensors a').click(function(e) {
@@ -271,31 +289,52 @@
                             $('#sensors').val($(this).data('sensor'));
                             $('#candidates-modal').modal('hide');
 
-                            recomputeEverything(app, 'temperature');
+                            recomputeEverything(app, 'resistance');
                         });
                         $('#candidates-modal').modal('show');
                     }
                 }
             }
 
-            $('#resistance-input').change(function() {
-                $('#temperature-input').val('');
+            $('#button-set-resistance').click(function(e) {
+                if($('#sensors').val() != "") {
+                    $('#temperature-input').val('');
+                }
                 recomputeEverything(app, 'temperature');
             });
+            $('#resistance-input').keyup(function(e){
+                if(e.keyCode == 13) {
+                    if($('#sensors').val() != "") {
+                        $('#temperature-input').val('');
+                    }
+                    recomputeEverything(app, 'temperature');
+                }
+            });
 
-            $('#temperature-input').change(function() {
-                $('#resistance-input').val('');
+            $('#button-set-temperature').click(function(e) {
+                if($('#sensors').val() != "") {
+                    $('#resistance-input').val('');
+                }
                 recomputeEverything(app, 'resistance');
             });
-
-            $('#sensors').change(function() {
-                recomputeEverything(app, 'temperature');
+            $('#temperature-input').keyup(function(e){
+                if(e.keyCode == 13) {
+                    if($('#sensors').val() != "") {
+                        $('#resistance-input').val('');
+                    }
+                    recomputeEverything(app, 'resistance');
+                }
             });
 
+            $('#sensors').change(function(e) {
+                recomputeEverything(app, 'resistance');
+            });
+            /*
             $('#plot-all').click(function(e) {
                 e.preventDefault();
                 plotAllSensors(app);
             });
+            */
         });
     </script>
 </body>
